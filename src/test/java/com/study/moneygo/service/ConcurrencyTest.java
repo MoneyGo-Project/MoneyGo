@@ -70,7 +70,7 @@ public class ConcurrencyTest {
         transactionRepository.deleteAll();
         transferLimitRepository.deleteAll();
         accountRepository.deleteAll();
-        userRepository.deleteAll();;
+        userRepository.deleteAll();
 
         // 송금자 생성
         sender = User.builder()
