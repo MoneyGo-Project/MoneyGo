@@ -6,6 +6,7 @@ import com.study.moneygo.account.entity.TransferLimit;
 import com.study.moneygo.account.repository.AccountRepository;
 import com.study.moneygo.account.repository.TransactionRepository;
 import com.study.moneygo.account.repository.TransferLimitRepository;
+import com.study.moneygo.notification.service.NotificationService;
 import com.study.moneygo.scheduled.transfer.dto.request.ScheduledTransferRequest;
 import com.study.moneygo.scheduled.transfer.dto.response.ScheduledTransferResponse;
 import com.study.moneygo.scheduled.transfer.entity.ScheduledTransfer;
@@ -36,6 +37,7 @@ public class ScheduledTransferService {
     private final TransactionRepository transactionRepository;
     private final TransferLimitRepository transferLimitRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
     @Transactional
     public ScheduledTransferResponse createSchedule(ScheduledTransferRequest request) {
@@ -196,6 +198,14 @@ public class ScheduledTransferService {
 
             // 예약 완료 처리
             schedule.execute(transaction);
+
+            // 성공 시 알림
+            notificationService.createScheduledTransferExecutedNotification(
+                    schedule.getFromAccount().getUser(),
+                    transaction,
+                    schedule.getDescription()
+            );
+
             scheduledTransferRepository.save(schedule);
 
             log.info("예약 송금 실행 완료: scheduleId={}, transactionId={}", schedule.getId(), transaction.getId());
@@ -203,6 +213,14 @@ public class ScheduledTransferService {
         } catch (Exception e) {
             // 실행 실패 처리
             schedule.fail(e.getMessage());
+
+            // 실패 시 알림
+            notificationService.createScheduledTransferFailedNotification(
+                    schedule.getFromAccount().getUser(),
+                    schedule.getAmount(),
+                    e.getMessage()
+            );
+
             scheduledTransferRepository.save(schedule);
 
             log.error("예약 송금 실행 실패: scheduleId={}, error={}", schedule.getId(), e.getMessage());

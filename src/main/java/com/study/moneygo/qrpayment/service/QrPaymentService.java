@@ -4,6 +4,7 @@ import com.study.moneygo.account.entity.Account;
 import com.study.moneygo.account.entity.Transaction;
 import com.study.moneygo.account.repository.AccountRepository;
 import com.study.moneygo.account.repository.TransactionRepository;
+import com.study.moneygo.notification.service.NotificationService;
 import com.study.moneygo.qrpayment.dto.request.QrGenerateRequest;
 import com.study.moneygo.qrpayment.dto.request.QrPayRequest;
 import com.study.moneygo.qrpayment.dto.response.QrGenerateResponse;
@@ -31,6 +32,7 @@ public class QrPaymentService {
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
     private static final int QR_EXPIRATION_MINUTES = 10; // QR 유효시간 10분
 
@@ -134,6 +136,9 @@ public class QrPaymentService {
             // 거래 완료
             transaction.complete();
             qrPayment.complete(transaction);
+
+            // 알림 생성
+            notificationService.createQrPaymentNotification(transaction);
 
             // 저장
             transactionRepository.save(transaction);

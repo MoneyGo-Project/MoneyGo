@@ -8,6 +8,7 @@ import com.study.moneygo.account.entity.TransferLimit;
 import com.study.moneygo.account.repository.AccountRepository;
 import com.study.moneygo.account.repository.TransactionRepository;
 import com.study.moneygo.account.repository.TransferLimitRepository;
+import com.study.moneygo.notification.service.NotificationService;
 import com.study.moneygo.user.entity.User;
 import com.study.moneygo.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class TransferService {
     private final TransferLimitRepository transferLimitRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
     @Transactional
     public TransferResponse transfer(TransferRequest request) {
@@ -106,6 +108,9 @@ public class TransferService {
 
             // 13. 거래 완료 처리
             transaction.complete();
+
+            // 알림 생성
+            notificationService.createTransferNotification(transaction);
 
             // 14. 저장
             transactionRepository.save(transaction);
