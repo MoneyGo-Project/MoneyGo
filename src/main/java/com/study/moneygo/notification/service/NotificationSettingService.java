@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -23,16 +24,40 @@ public class NotificationSettingService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final UserRepository userRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public NotificationSettingResponse getMySetting() {
         String email = getCurrentUserEmail();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         NotificationSetting setting = notificationSettingRepository.findByUserId(user.getId())
-                .orElseGet(() -> createDefaultSetting(user));
+                .orElse(null);
+
+        if (setting == null) {
+            // 별도 트랜잭션으로 생성
+            setting = createDefaultSettingInNewTransaction(user);
+        }
 
         return NotificationSettingResponse.of(setting);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public NotificationSetting createDefaultSettingInNewTransaction(User user) {
+        // 동시성 문제 방지: 다시 한번 확인
+        return notificationSettingRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    NotificationSetting setting = NotificationSetting.builder()
+                            .user(user)
+                            .emailEnabled(true)
+                            .transferReceivedEmail(true)
+                            .transferSentEmail(false)
+                            .scheduledTransferEmail(true)
+                            .qrPaymentEmail(true)
+                            .largeAmountAlertEnabled(true)
+                            .largeAmountThreshold(new BigDecimal("500000"))
+                            .build();
+                    return notificationSettingRepository.save(setting);
+                });
     }
 
     @Transactional

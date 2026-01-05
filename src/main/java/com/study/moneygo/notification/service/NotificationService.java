@@ -138,20 +138,59 @@ public class NotificationService {
         notificationRepository.save(notification);
         log.info("알림 생성: userId={}, type={}", user.getId(), type);
 
-        // 알림 설정 확인 후 이메일 전송
-        NotificationSetting setting = notificationSettingRepository.findByUserId(user.getId())
-                .orElse(createDefaultSetting(user));
+        // 알림 설정 확인 후 이메일 전송 (비동기적으로 처리, 실패해도 트랜잭션 롤백 안 됨)
+        try {
+            NotificationSetting setting = getOrCreateNotificationSetting(user);
 
-        if (setting.shouldNotify(type)) {
-            sendEmailNotification(user, type, title, content, amount);
-        }
+            if (setting.shouldNotify(type)) {
+                sendEmailNotification(user, type, title, content, amount);
+            }
 
-        // 고액 거래 알림
-        if (setting.isLargeAmount(amount) &&
-                (type == Notification.NotificationType.TRANSFER_SENT ||
-                        type == Notification.NotificationType.QR_PAYMENT_SENT)) {
-            emailService.sendLargeAmountAlertEmail(user.getEmail(), amount, type.name());
+            // 고액 거래 알림
+            if (setting.isLargeAmount(amount) &&
+                    (type == Notification.NotificationType.TRANSFER_SENT ||
+                            type == Notification.NotificationType.QR_PAYMENT_SENT)) {
+                emailService.sendLargeAmountAlertEmail(user.getEmail(), amount, type.name());
+            }
+        } catch (Exception e) {
+            // 이메일 전송 실패는 로그만 남기고 트랜잭션은 계속 진행
+            log.error("이메일 전송 중 오류 발생했지만 알림은 생성됨: userId={}, type={}, error={}",
+                    user.getId(), type, e.getMessage());
         }
+    }
+
+    private NotificationSetting getOrCreateNotificationSetting(User user) {
+        return notificationSettingRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    try {
+                        // 동시성 문제 방지: 트랜잭션 전파를 REQUIRES_NEW로 설정
+                        return createDefaultSettingInNewTransaction(user);
+                    } catch (Exception e) {
+                        // 중복 생성 시도 시 다시 조회
+                        log.warn("알림 설정 생성 중 오류 발생 (중복 가능성), 재조회: userId={}", user.getId());
+                        return notificationSettingRepository.findByUserId(user.getId())
+                                .orElseThrow(() -> new IllegalStateException("알림 설정을 생성할 수 없습니다."));
+                    }
+                });
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public NotificationSetting createDefaultSettingInNewTransaction(User user) {
+        // 동시성 문제 방지: 다시 한번 확인
+        return notificationSettingRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    NotificationSetting setting = NotificationSetting.builder()
+                            .user(user)
+                            .emailEnabled(true)
+                            .transferReceivedEmail(true)
+                            .transferSentEmail(false)
+                            .scheduledTransferEmail(true)
+                            .qrPaymentEmail(true)
+                            .largeAmountAlertEnabled(true)
+                            .largeAmountThreshold(new BigDecimal("500000"))
+                            .build();
+                    return notificationSettingRepository.save(setting);
+                });
     }
 
     private void sendEmailNotification(User user, Notification.NotificationType type,
@@ -165,22 +204,6 @@ public class NotificationService {
                     emailService.sendNotificationEmail(user.getEmail(), title, content);
             default -> log.debug("이메일 전송 불필요: type={}", type);
         }
-    }
-
-    @Transactional
-    public NotificationSetting createDefaultSetting(User user) {
-        NotificationSetting setting = NotificationSetting.builder()
-                .user(user)
-                .emailEnabled(true)
-                .transferReceivedEmail(true)
-                .transferSentEmail(false)
-                .scheduledTransferEmail(true)
-                .qrPaymentEmail(true)
-                .largeAmountAlertEnabled(true)
-                .largeAmountThreshold(new BigDecimal("500000"))
-                .build();
-
-        return notificationSettingRepository.save(setting);
     }
 
     @Transactional(readOnly = true)
