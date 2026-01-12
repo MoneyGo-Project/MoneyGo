@@ -11,6 +11,7 @@ import com.study.moneygo.scheduled.transfer.dto.request.ScheduledTransferRequest
 import com.study.moneygo.scheduled.transfer.dto.response.ScheduledTransferResponse;
 import com.study.moneygo.scheduled.transfer.entity.ScheduledTransfer;
 import com.study.moneygo.scheduled.transfer.repository.ScheduledTransferRepository;
+import com.study.moneygo.simplepassword.service.SimplePasswordService;
 import com.study.moneygo.user.entity.User;
 import com.study.moneygo.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +37,7 @@ public class ScheduledTransferService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final TransferLimitRepository transferLimitRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final SimplePasswordService simplePasswordService;
     private final NotificationService notificationService;
 
     @Transactional
@@ -50,10 +50,8 @@ public class ScheduledTransferService {
         Account fromAccount = accountRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("계좌 정보를 찾을 수 없습니다."));
 
-        // 비밀번호 확인
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 올바르지 않습니다.");
-        }
+        // 간편 비밀번호 확인
+        simplePasswordService.verifySimplePasswordForUser(user.getId(), request.getPassword());
 
         // 받는 계좌 존재 확인
         Account toAccount = accountRepository.findByAccountNumber(request.getToAccountNumber())

@@ -66,6 +66,10 @@ public class SimplePasswordController {
         return ResponseEntity.ok(Map.of("valid", isValid));
     }
 
+    /**
+     * 간편 비밀번호 등록 여부 확인
+     * @return
+     */
     @GetMapping("/status")
     public ResponseEntity<SimplePasswordResponse> checkSimplePasswordStatus() {
         log.info("간편 비밀번호 등록 여부 조회");

@@ -9,12 +9,12 @@ import com.study.moneygo.account.repository.AccountRepository;
 import com.study.moneygo.account.repository.TransactionRepository;
 import com.study.moneygo.account.repository.TransferLimitRepository;
 import com.study.moneygo.notification.service.NotificationService;
+import com.study.moneygo.simplepassword.service.SimplePasswordService;
 import com.study.moneygo.user.entity.User;
 import com.study.moneygo.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +29,7 @@ public class TransferService {
     private final TransactionRepository transactionRepository;
     private final TransferLimitRepository transferLimitRepository;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final SimplePasswordService simplePasswordService;
     private final NotificationService notificationService;
 
     @Transactional
@@ -52,11 +52,8 @@ public class TransferService {
             throw new IllegalArgumentException("본인 계좌로는 송금할 수 없습니다.");
         }
 
-        // 5. 비밀번호 확인
-        //* TODO : 추후에 간편 비밀번호(6자리)를 별도로 관리하여 다루는 로직을 리팩토링 할 예정
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 올바르지 않습니다.");
-        }
+        // 5. 간편 비밀번호 확인
+        simplePasswordService.verifySimplePasswordForUser(user.getId(), request.getPassword());
 
         // 6. 계좌 상태 확인
         if (!fromAccount.isActive()) {
