@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -335,6 +336,42 @@ public class NotificationService {
         unreadNotifications.forEach(Notification::markAsRead);
         notificationRepository.saveAll(unreadNotifications);
     }
+
+    /*
+    알림 삭제
+     */
+    @Transactional
+    public void deleteNotification(Long notificationId) {
+        String email = getCurrentUserEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("알림을 찾을 수 없습니다."));
+
+        // 소유권 확인
+        if (!notification.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("접근 권한이 없습니다.");
+        }
+
+        notificationRepository.delete(notification);
+        log.info("알림 삭제 완료: notificationId={}, userId={}", notificationId, user.getId());
+    }
+
+    /*
+    읽은 알림 전체 삭제
+     */
+    @Transactional
+    public void deleteAllReadNotifications() {
+        String email = getCurrentUserEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        List<Notification> readNotifications = notificationRepository.findByUserIdAndIsReadTrue(user.getId());
+        notificationRepository.deleteAll(readNotifications);
+        log.info("읽은 알림 전체 삭제 완료: userId={}, count={}", user.getId(), readNotifications.size());
+    }
+
 
     private String formatAmount(BigDecimal amount) {
         return String.format("%,d", amount.longValue());

@@ -73,4 +73,24 @@ public class NotificationController {
         notificationService.markAllAsRead();
         return ResponseEntity.noContent().build();
     }
+
+    /*
+    알림 삭제
+     */
+    @DeleteMapping("/{notificationId}")
+    public ResponseEntity<Void> deleteNotification(@PathVariable Long notificationId) {
+        log.info("알림 삭제 요청: notificationId={}", notificationId);
+        notificationService.deleteNotification(notificationId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /*
+    읽은 알림 전체 삭제
+     */
+    @DeleteMapping("/read-all")
+    public ResponseEntity<Void> deleteAllReadNotifications() {
+        log.info("읽은 알림 전체 삭제 요청");
+        notificationService.deleteAllReadNotifications();
+        return ResponseEntity.noContent().build();
+    }
 }

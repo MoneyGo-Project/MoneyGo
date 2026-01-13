@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
@@ -22,4 +24,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("SELECT n FROM Notification n WHERE n.user.id = :userId AND n.isRead = false ORDER BY n.createdAt DESC")
     Page<Notification> findUnreadByUserId(@Param("userId") Long userId, Pageable pageable);
 
+    // 사용자의 읽은 알림 목록 조회
+    List<Notification> findByUserIdAndIsReadTrue(Long userId);
 }
