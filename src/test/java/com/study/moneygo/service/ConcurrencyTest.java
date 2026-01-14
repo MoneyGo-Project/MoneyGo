@@ -1,16 +1,15 @@
 package com.study.moneygo.service;
 
-import com.study.moneygo.account.dto.request.TransferRequest;
-import com.study.moneygo.account.dto.response.TransferResponse;
+import com.study.moneygo.transfer.dto.request.TransferRequest;
+import com.study.moneygo.transfer.dto.response.TransferResponse;
 import com.study.moneygo.account.entity.Account;
 import com.study.moneygo.account.repository.AccountRepository;
 import com.study.moneygo.account.repository.TransactionRepository;
-import com.study.moneygo.account.repository.TransferLimitRepository;
-import com.study.moneygo.account.service.TransferService;
+import com.study.moneygo.transfer.repository.TransferLimitRepository;
+import com.study.moneygo.transfer.service.TransferService;
 import com.study.moneygo.qrpayment.repository.QrPaymentRepository;
 import com.study.moneygo.user.entity.User;
 import com.study.moneygo.user.repository.UserRepository;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

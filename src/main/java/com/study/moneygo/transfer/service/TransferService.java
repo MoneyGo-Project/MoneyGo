@@ -1,13 +1,13 @@
-package com.study.moneygo.account.service;
+package com.study.moneygo.transfer.service;
 
-import com.study.moneygo.account.dto.request.TransferRequest;
-import com.study.moneygo.account.dto.response.TransferResponse;
+import com.study.moneygo.transfer.dto.request.TransferRequest;
+import com.study.moneygo.transfer.dto.response.TransferResponse;
 import com.study.moneygo.account.entity.Account;
 import com.study.moneygo.account.entity.Transaction;
-import com.study.moneygo.account.entity.TransferLimit;
+import com.study.moneygo.transfer.entity.TransferLimit;
 import com.study.moneygo.account.repository.AccountRepository;
 import com.study.moneygo.account.repository.TransactionRepository;
-import com.study.moneygo.account.repository.TransferLimitRepository;
+import com.study.moneygo.transfer.repository.TransferLimitRepository;
 import com.study.moneygo.notification.service.NotificationService;
 import com.study.moneygo.simplepassword.service.SimplePasswordService;
 import com.study.moneygo.user.entity.User;

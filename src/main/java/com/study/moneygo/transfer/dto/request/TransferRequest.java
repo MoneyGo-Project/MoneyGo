@@ -1,4 +1,4 @@
-package com.study.moneygo.account.dto.request;
+package com.study.moneygo.transfer.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;

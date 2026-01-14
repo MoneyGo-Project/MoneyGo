@@ -1,6 +1,6 @@
-package com.study.moneygo.account.repository;
+package com.study.moneygo.transfer.repository;
 
-import com.study.moneygo.account.entity.TransferLimit;
+import com.study.moneygo.transfer.entity.TransferLimit;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

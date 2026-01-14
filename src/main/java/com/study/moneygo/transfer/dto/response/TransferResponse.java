@@ -1,4 +1,4 @@
-package com.study.moneygo.account.dto.response;
+package com.study.moneygo.transfer.dto.response;
 
 import com.study.moneygo.account.entity.Transaction;
 import lombok.AllArgsConstructor;

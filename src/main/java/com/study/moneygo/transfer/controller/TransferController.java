@@ -1,9 +1,9 @@
-package com.study.moneygo.account.controller;
+package com.study.moneygo.transfer.controller;
 
 
-import com.study.moneygo.account.dto.request.TransferRequest;
-import com.study.moneygo.account.dto.response.TransferResponse;
-import com.study.moneygo.account.service.TransferService;
+import com.study.moneygo.transfer.dto.request.TransferRequest;
+import com.study.moneygo.transfer.dto.response.TransferResponse;
+import com.study.moneygo.transfer.service.TransferService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

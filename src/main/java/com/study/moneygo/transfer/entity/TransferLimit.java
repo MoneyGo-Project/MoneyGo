@@ -1,5 +1,6 @@
-package com.study.moneygo.account.entity;
+package com.study.moneygo.transfer.entity;
 
+import com.study.moneygo.account.entity.Account;
 import com.study.moneygo.util.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
