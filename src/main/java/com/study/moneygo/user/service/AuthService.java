@@ -2,7 +2,10 @@ package com.study.moneygo.user.service;
 
 import com.study.moneygo.account.entity.Account;
 import com.study.moneygo.account.repository.AccountRepository;
+import com.study.moneygo.simplepassword.dto.request.SimplePasswordChangeRequest;
+import com.study.moneygo.user.dto.request.AccountDeleteRequest;
 import com.study.moneygo.user.dto.request.LoginRequest;
+import com.study.moneygo.user.dto.request.PasswordChangeRequest;
 import com.study.moneygo.user.dto.request.SignupRequest;
 import com.study.moneygo.user.dto.response.LoginResponse;
 import com.study.moneygo.user.dto.response.SignupResponse;
@@ -12,10 +15,12 @@ import com.study.moneygo.util.account.AccountNumberGenerator;
 import com.study.moneygo.util.security.JwtTokenProvider;
 import com.sun.nio.sctp.IllegalReceiveException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -23,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -32,6 +38,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -71,6 +78,7 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("해당 계정을 찾을 수 없습니다."));
@@ -129,7 +137,92 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         user.resetFailedAttempts();
         userRepository.save(user);
+    }
 
+    /**
+     * 비밀번호 변경
+     */
+    @Transactional
+    public void changePassword(PasswordChangeRequest request) {
+        User user = getCurrentUser();
+
+        validateCurrentPassword(request.getCurrentPassword(), user.getPassword());
+        validateNewPasswordMatch(request.getNewPassword(), request.getNewPasswordConfirm());
+        validatePasswordNotSame(request.getCurrentPassword(), request.getNewPassword());
+
+        user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        log.info("비밀번호 변경 완료: userId={}", user.getId());
+    }
+
+    /**
+     * 간편 비밀번호 변경
+     */
+    @Transactional
+    public void changeSimplePassword(SimplePasswordChangeRequest request) {
+        User user = getCurrentUser();
+
+        if (!user.hasSimplePassword()) {
+            throw new IllegalArgumentException("간편 비밀번호가 등록되어 있지 않습니다.");
+        }
+
+        validateCurrentPassword(request.getCurrentSimplePassword(), user.getSimplePassword());
+        validateNewPasswordMatch(request.getNewSimplePassword(), request.getNewSimplePasswordConfirm());
+        validatePasswordNotSame(request.getCurrentSimplePassword(), request.getNewSimplePassword());
+
+        user.setSimplePassword(passwordEncoder.encode(request.getNewSimplePassword()));
+        userRepository.save(user);
+
+        log.info("간편 비밀번호 변경 완료: userId={}", user.getId());
+    }
+
+    /**
+     * 계정 탈퇴
+     */
+    @Transactional
+    public void deleteAccount(AccountDeleteRequest request) {
+        User user = getCurrentUser();
+
+        validateCurrentPassword(request.getPassword(), user.getPassword());
+
+        // 계좌 동결
+        accountRepository.findByUserId(user.getId()).ifPresent(account -> {
+            account.freeze();
+            accountRepository.save(account);
+        });
+
+        // 사용자 계정 정지
+        user.deactivate();
+        userRepository.save(user);
+
+        log.info("계정 탈퇴 완료: userId={}, reason={}", user.getId(), request.getReason());
+    }
+
+    // ========== Private 헬퍼 메서드 ==========
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    }
+
+    private void validateCurrentPassword(String inputPassword, String storedPassword) {
+        if (!passwordEncoder.matches(inputPassword, storedPassword)) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+    }
+
+    private void validateNewPasswordMatch(String newPassword, String confirmPassword) {
+        if (!newPassword.equals(confirmPassword)) {
+            throw new IllegalArgumentException("새 비밀번호가 일치하지 않습니다.");
+        }
+    }
+
+    private void validatePasswordNotSame(String currentPassword, String newPassword) {
+        if (currentPassword.equals(newPassword)) {
+            throw new IllegalArgumentException("현재 비밀번호와 새 비밀번호가 동일합니다.");
+        }
     }
 
     private String generateUniqueAccountNumber() {

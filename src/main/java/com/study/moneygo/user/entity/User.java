@@ -92,4 +92,11 @@ public class User extends BaseEntity {
         SUSPENDED
     }
 
+    public void updatePassword(String newPassword) {
+        this.password = newPassword;
+    }
+
+    public void deactivate() {
+        this.status = UserStatus.SUSPENDED;
+    }
 }
