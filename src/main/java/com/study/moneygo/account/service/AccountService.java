@@ -1,5 +1,6 @@
 package com.study.moneygo.account.service;
 
+import com.study.moneygo.account.dto.request.AccountLockRequest;
 import com.study.moneygo.account.dto.response.AccountOwnerResponse;
 import com.study.moneygo.account.dto.response.AccountResponse;
 import com.study.moneygo.account.entity.Account;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ public class AccountService {
     private final TransactionRepository transactionRepository;
     private final SimplePasswordService simplePasswordService;
     private final NotificationService notificationService;
+    private final PasswordEncoder passwordEncoder;
 
     public AccountResponse getMyAccount() {
         String email = getCurrentUserEmail();
@@ -95,6 +98,64 @@ public class AccountService {
         return SelfDepositResponse.of(transaction, account.getBalance());
     }
 
+    /*
+    계좌 잠금
+     */
+    @Transactional
+    public void lockAccount() {
+        String email = getCurrentUserEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        Account account = accountRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("계좌 정보를 찾을 수 없습니다."));
+
+        // 이미 잠겼으면
+        isAlreadyLocked(account);
+
+        account.freeze();
+        accountRepository.save(account);
+
+        log.info("계좌 잠금 : userId={}, accountId={}", user.getId(), account.getId());
+    }
+
+    /*
+    계좌 잠금 해제
+     */
+
+    @Transactional
+    public void unlockAccount(AccountLockRequest request) {
+        String email = getCurrentUserEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        // 비밀번호 확인하기
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        }
+        Account account = accountRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("계좌 정보를 찾을 수 없습니다."));
+
+        // 이미 잠금 해제된 경우
+        isAlreadyActivated(account);
+
+        account.activate();
+        accountRepository.save(account);
+
+        log.info("계좌 잠금 해제 : userId={}, accountId={}", user.getId(), account.getId());
+    }
+
+    /*
+    계좌 잠금 상태 조회
+     */
+    public boolean isAccountLocked() {
+        String email = getCurrentUserEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        Account account = accountRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalStateException("계좌 정보를 찾을 수 없습니다."));
+
+        return account.getStatus() == Account.AccountStatus.FROZEN;
+    }
+
     private String getCurrentUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -102,5 +163,19 @@ public class AccountService {
         System.out.println("===== Authentication Principal: " + authentication.getPrincipal() + " =====");  // 디버깅
 
         return authentication.getName();
+    }
+
+    // 이미 잠긴 계좌인지 판별하는 메서드
+    private static void isAlreadyLocked(Account account) {
+        if (account.getStatus() == Account.AccountStatus.FROZEN) {
+            throw new IllegalStateException("이미 잠긴 계좌입니다.");
+        }
+    }
+
+    // 이미 활성화된 계좌인지 판별하는 메서드
+    private static void isAlreadyActivated(Account account) {
+        if (account.getStatus() == Account.AccountStatus.ACTIVE) {
+            throw new IllegalStateException("이미 활성화된 계좌입니다.");
+        }
     }
 }
